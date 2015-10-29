@@ -6,15 +6,15 @@ var events = require('events');
 var mongoose = require('mongoose');
 var request = require('request');
 var polyline = require('polyline');
-//load config.js                                                                                                       
-try {
-  var config = require('../config.js');
-} catch(e) {
-  try {
-    var config = require('../config-sample.js');
-  } catch(e) {
-    handleError(new Error('Cannot find config.js'));
-  }
+var fs = require('fs');
+
+//load config.js 
+var config = {};
+var data = fs.readFileSync('./config.json');
+config = JSON.parse(data);
+if (!config.agencies) {
+    handleError(new Error('No network_key specified in config.js\nTry adding \'capital-metro\' to the agencies in config.js to load transit data'));
+    process.exit();
 }
 
 var db = mongoose.connect(config.mongo_url);
@@ -48,7 +48,7 @@ var StopTime = db.model('StopTime');
 var Trip = db.model('Trip');
 var Timetable = db.model('Timetable');
 
-var getStopsFoShapes = function(agency_key, cb) {
+var getStopsFoShapes = function(network_key, cb) {
     
     var trip_ids;
     
@@ -58,8 +58,9 @@ var getStopsFoShapes = function(agency_key, cb) {
 
     function getTrips(callback){
 	Trip.find({
-	    agency_key: agency_key
+	    network_key: network_key
 	}).exec(function(e, result){
+	    console.log(result);
 	    callback(e, result);
 	});
     }
@@ -69,7 +70,7 @@ var getStopsFoShapes = function(agency_key, cb) {
 	var loc_list = [];
 	var i = 0;
 	StopTime.find({
-	    agency_key: agency_key,
+	    network_key: network_key,
 	    trip_id: trip_id
 	}).exec(function(e, result){
 	    stop_ids = result.map(function(stoptime){
@@ -80,7 +81,7 @@ var getStopsFoShapes = function(agency_key, cb) {
 	    });
 	    stop_ids.forEach(function(exemple, index){
 		Stop.find({
-		    agency_key: agency_key,
+		    network_key: network_key,
 		    stop_id: exemple.stop_id
 		}).exec(function(e, result){
 		    // check les données entrées si il y a une erreur  sur result[0].loc
@@ -94,6 +95,7 @@ var getStopsFoShapes = function(agency_key, cb) {
 		    {
 			loc_list.sort(function(a, b){return a.sequence - b.sequence}); //order stops by sequence
 			loc_list = loc_list.map(function(loc){return loc.loc}); // remove sequence from loc_list
+			//console.log(loc_list);
 			callback(e, loc_list);
 		    }
 		    else
@@ -167,23 +169,15 @@ var getStopsFoShapes = function(agency_key, cb) {
 			    	    shape_id : exemple + i , shape_pt_lat : test[cmp][1],
 				    shape_pt_lon : test[cmp][0],
 				    shape_pt_sequence : cmp,
-				    Comment : " ",  agency_key: agency_key});
+				    Comment : " ",  network_key: network_key});
 				shape.save(function(err){
 				    if(err) return handleError(err);
 				})
 			    }
-			    // 	Shape.create(
-			    // 	    {agency_key : agency_key},
-			    // 	    {shape_id : exemple + i , shape_pt_lat : test[cmp][1], shape_pt_lon : test[cmp][0], shape_pt_sequence : cmp, Comment : "",  agency_key: agency_key}, callback)
-			    // }
-			    // console.log(test); // Show the HTML for the Modulus homepage.
 			}
-			// else
-			//     console.log('error: ' + error);
 		    });
 		    if (i === trip_ids.length - 1)
 		    {
-			//			console.log(stops_loc);
 			callback(e, stops_loc);
 		    }
 		    else
@@ -203,7 +197,7 @@ var server = http.createServer(function(req, res) {
     res.writeHead(200);
     if (page === '/yolo')
     {
-	getStopsFoShapes('montpellier_short', function(err, stops_loc) {
+	getStopsFoShapes('tam', function(err, stops_loc) {
 	    res.end(JSON.stringify(stops_loc));
 	});
     }

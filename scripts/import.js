@@ -11,23 +11,15 @@ var q;
 
 
 // check if this file was invoked direct through command line or required as an export
-var invocation = (require.main === module) ? 'direct' : 'required';
-
 var config = {};
 if(invocation === 'direct') {
-  try {
-    var config = require('../config.js');
-  } catch(e) {
-    try {
-      var config = require('../config-sample.js');
-    } catch(e) {
-      handleError(new Error('Cannot find config.js'));
-    }
-  }
+    var data = fs.readFileSync('./config.json');
+    config = JSON.parse(data);
 
 
-  if(!config.agencies) {
-    handleError(new Error('No agency_key specified in config.js\nTry adding \'capital-metro\' to the agencies in config.js to load transit data'));
+
+    if(!config.agencies) {
+    handleError(new Error('No network_key specified in config.js\nTry adding \'capital-metro\' to the agencies in config.js to load transit data'));
     process.exit();
   }
 }
@@ -91,23 +83,23 @@ function main(config, callback) {
 
     q = async.queue(downloadGTFS, 1);
     // loop through all agencies specified
-    // If the agency_key is a URL, download that GTFS file, otherwise treat
-    // it as an agency_key and get file from gtfs-data-exchange.com
+    // If the network_key is a URL, download that GTFS file, otherwise treat
+    // it as an network_key and get file from gtfs-data-exchange.com
     config.agencies.forEach(function (item) {
       var agency = {};
 
       if(typeof (item) == 'string') {
-        agency.agency_key = item;
+        agency.network_key = item;
         agency.agency_url = 'http://www.gtfs-data-exchange.com/agency/' + item + '/latest.zip';
       } else if(item.url) {
-        agency.agency_key = item.agency_key;
+        agency.network_key = item.network_key;
         agency.agency_url = item.url;
       } else if(item.path) {
-        agency.agency_key = item.agency_key;
-        agency.path = item.path;
+        agency.network_key = item.network_key;
+        agency.path = './import/' + item.path; // import devient le dossier par default
       }
 
-      if(!agency.agency_key) {
+      if(!agency.network_key) {
         handleError(new Error('No URL or Agency Key or path provided.'));
       }
 
@@ -125,13 +117,13 @@ function main(config, callback) {
     function downloadGTFS(task, cb) {
       var downloadDir = 'downloads';
       var gtfsDir = 'downloads';
-      var agency_key = task.agency_key;
+      var network_key = task.network_key;
       var agency_bounds = {
         sw: [],
         ne: []
       };
 
-      log(agency_key + ': Starting');
+      log(network_key + ': Starting');
 
       async.series([
         cleanupFiles,
@@ -141,7 +133,7 @@ function main(config, callback) {
         postProcess,
         cleanupFiles
       ], function (e, results) {
-        log(e || agency_key + ': Completed');
+        log(e || network_key + ': Completed');
         cb();
       });
 
@@ -177,21 +169,21 @@ function main(config, callback) {
         // do download
         var file_protocol = require('url').parse(task.agency_url).protocol;
         if(file_protocol === 'http:' || file_protocol === 'https:') {
-          log(agency_key + ': Downloading');
+          log(network_key + ': Downloading');
           request(task.agency_url, processFile).pipe(fs.createWriteStream(downloadDir + '/latest.zip'));
 
           function processFile(e, response, body) {
             if(response && response.statusCode != 200) {
               cb(new Error('Couldn\'t download files'));
             }
-            log(agency_key + ': Download successful');
+            log(network_key + ': Download successful');
 
             fs.createReadStream(downloadDir + '/latest.zip')
               .pipe(unzip.Extract({
                 path: downloadDir
               }).on('close', cb))
               .on('error', function (e) {
-                log(agency_key + ': Error Unzipping File');
+                log(network_key + ': Error Unzipping File');
                 handleError(e);
               });
           }
@@ -231,11 +223,11 @@ function main(config, callback) {
 
 
       function removeDatabase(cb) {
-        //remove old db records based on agency_key
+        //remove old db records based on network_key
         async.forEach(GTFSFiles, function (GTFSFile, cb) {
           db.collection(GTFSFile.collection, function (e, collection) {
             collection.remove({
-              agency_key: agency_key
+              network_key: network_key
             }, cb);
           });
         }, function (e) {
@@ -245,16 +237,16 @@ function main(config, callback) {
 
 
       function importFiles(cb) {
-        //Loop through each file and add agency_key
+        //Loop through each file and add network_key
         async.forEachSeries(GTFSFiles, function (GTFSFile, cb) {
           var filepath = path.join(gtfsDir, GTFSFile.fileNameBase + '.txt');
 
           if(!fs.existsSync(filepath)) {
-            log(agency_key + ': Importing data - No ' + GTFSFile.fileNameBase + ' file found');
+            log(network_key + ': Importing data - No ' + GTFSFile.fileNameBase + ' file found');
             return cb();
           }
 
-          log(agency_key + ': Importing data - ' + GTFSFile.fileNameBase);
+          log(network_key + ': Importing data - ' + GTFSFile.fileNameBase);
           db.collection(GTFSFile.collection, function (e, collection) {
             var input = fs.createReadStream(filepath);
             var parser = csv.parse({
@@ -270,8 +262,8 @@ function main(config, callback) {
                   }
                 }
 
-                //add agency_key
-                line.agency_key = agency_key;
+                //add network_key
+                line.network_key = network_key;
 
                 //convert fields that should be int
                 if(line.monday) {
@@ -380,7 +372,7 @@ function main(config, callback) {
 
 
       function postProcess(cb) {
-        log(agency_key + ': Post Processing data');
+        log(network_key + ': Post Processing data');
 
         async.series([
           agencyCenter,
@@ -398,7 +390,7 @@ function main(config, callback) {
 
         db.collection('agencies')
           .update({
-            agency_key: agency_key
+            network_key: network_key
           }, {
             $set: {
               agency_bounds: agency_bounds,
@@ -411,7 +403,7 @@ function main(config, callback) {
       function updatedDate(cb) {
         db.collection('agencies')
           .update({
-            agency_key: agency_key
+            network_key: network_key
           }, {
             $set: {
               date_last_updated: Date.now()
