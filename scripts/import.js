@@ -73,12 +73,10 @@ var GTFSFiles = [{
   collection: 'trips'
 }, {
   fileNameBase: 'timetables',
-  collection: 'timetables',
-  nonstandard: true
+  collection: 'timetables'
 }, {
   fileNameBase: 'route_directions',
-  collection: 'routedirections',
-  nonstandard: true
+  collection: 'routedirections'
 }];
 
 
@@ -93,10 +91,15 @@ function main(config, callback) {
 
     q = async.queue(downloadGTFS, 1);
     // loop through all agencies specified
+    // If the agency_key is a URL, download that GTFS file, otherwise treat
+    // it as an agency_key and get file from gtfs-data-exchange.com
     config.agencies.forEach(function (item) {
       var agency = {};
 
-      if(item.url) {
+      if(typeof (item) == 'string') {
+        agency.agency_key = item;
+        agency.agency_url = 'http://www.gtfs-data-exchange.com/agency/' + item + '/latest.zip';
+      } else if(item.url) {
         agency.agency_key = item.agency_key;
         agency.agency_url = item.url;
       } else if(item.path) {
@@ -247,24 +250,18 @@ function main(config, callback) {
           var filepath = path.join(gtfsDir, GTFSFile.fileNameBase + '.txt');
 
           if(!fs.existsSync(filepath)) {
-            if(!GTFSFile.nonstandard) {
-              log(agency_key + ': Importing data - No ' + GTFSFile.fileNameBase + '.txt file found');
-            }
-
+            log(agency_key + ': Importing data - No ' + GTFSFile.fileNameBase + ' file found');
             return cb();
           }
 
-          log(agency_key + ': Importing data - ' + GTFSFile.fileNameBase + '.txt');
-          db.collection(GTFSFile.collection, function(e, collection) {
-            if(e) return handleError(e);
+          log(agency_key + ': Importing data - ' + GTFSFile.fileNameBase);
+          db.collection(GTFSFile.collection, function (e, collection) {
             var input = fs.createReadStream(filepath);
-
             var parser = csv.parse({
               columns: true,
               relax: true
             });
-
-            parser.on('readable', function() {
+            parser.on('readable', function () {
               while(line = parser.read()) {
                 //remove null values
                 for(var key in line) {
@@ -277,65 +274,54 @@ function main(config, callback) {
                 line.agency_key = agency_key;
 
                 //convert fields that should be int
-                var integerFields = [
-                  'monday',
-                  'tuesday',
-                  'wednesday',
-                  'thursday',
-                  'friday',
-                  'saturday',
-                  'sunday',
-                  'start_date',
-                  'end_date',
-                  'date',
-                  'exception_type',
-                  'shape_pt_sequence',
-                  'payment_method',
-                  'transfers',
-                  'transfer_duration',
-                  'feed_start_date',
-                  'feed_end_date',
-                  'headway_secs',
-                  'exact_times',
-                  'route_type',
-                  'direction_id',
-                  'location_type',
-                  'wheelchair_boarding',
-                  'stop_sequence',
-                  'pickup_type',
-                  'drop_off_type',
-                  'use_stop_sequence',
-                  'transfer_type',
-                  'min_transfer_time'
-                ];
-
-                integerFields.forEach(function(fieldName) {
-                  if(line[fieldName]) {
-                    line[fieldName] = parseInt(line[fieldName], 10);
-                  }
-                });
-
-                //convert fields that should be float
-                var floatFields = [
-                  'price',
-                  'shape_dist_traveled',
-                  'shape_pt_lat',
-                  'shape_pt_lon',
-                  'stop_lat',
-                  'stop_lon'
-                ];
-
-                floatFields.forEach(function(fieldName) {
-                  if(line[fieldName]) {
-                    line[fieldName] = parseFloat(line[fieldName]);
-                  }
-                });
+                if(line.monday) {
+                  line.monday = parseInt(line.monday, 10);
+                }
+                if(line.tuesday) {
+                  line.tuesday = parseInt(line.tuesday, 10);
+                }
+                if(line.wednesday) {
+                  line.wednesday = parseInt(line.wednesday, 10);
+                }
+                if(line.thursday) {
+                  line.thursday = parseInt(line.thursday, 10);
+                }
+                if(line.friday) {
+                  line.friday = parseInt(line.friday, 10);
+                }
+                if(line.saturday) {
+                  line.satuday = parseInt(line.saturday, 10);
+                }
+                if(line.sunday) {
+                  line.sunday = parseInt(line.sunday, 10);
+                }
+                if(line.start_date) {
+                  line.start_date = parseInt(line.start_date, 10);
+                }
+                if(line.end_date) {
+                  line.end_date = parseInt(line.end_date, 10);
+                }
+                if(line.date) {
+                  line.date = parseInt(line.date, 10);
+                }
+                if(line.exception_type) {
+                  line.exception_type = parseInt(line.exception_type, 10);
+                }
+                if(line.stop_sequence) {
+                  line.stop_sequence = parseInt(line.stop_sequence, 10);
+                }
+                if(line.direction_id) {
+                  line.direction_id = parseInt(line.direction_id, 10);
+                }
+                if(line.shape_pt_sequence) {
+                  line.shape_pt_sequence = parseInt(line.shape_pt_sequence, 10);
+                }
 
                 // make lat/lon array for stops
                 if(line.stop_lat && line.stop_lon) {
                   line.loc = [
-                    line.stop_lon,
-                    line.stop_lat
+                    parseFloat(line.stop_lon),
+                    parseFloat(line.stop_lat)
                   ];
 
                   // if coordinates are not specified, use [0,0]
@@ -370,18 +356,18 @@ function main(config, callback) {
 
                 //make lat/long for shapes
                 if(line.shape_pt_lat && line.shape_pt_lon) {
+                  line.shape_pt_lon = parseFloat(line.shape_pt_lon);
+                  line.shape_pt_lat = parseFloat(line.shape_pt_lat);
                   line.loc = [line.shape_pt_lon, line.shape_pt_lat];
                 }
 
                 //insert into db
-                collection.insert(line, function(e, inserted) {
-                  if(e) {
-                    handleError(e);
-                  }
+                collection.insert(line, function (e, inserted) {
+                  if(e) handleError(e);
                 });
               }
             });
-            parser.on('end', function(count) {
+            parser.on('end', function (count) {
               cb();
             });
             parser.on('error', handleError);

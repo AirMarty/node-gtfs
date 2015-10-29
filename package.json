@@ -65,7 +65,8 @@
     "proj4": "2.3.12",
     "request": "2.65.0",
     "underscore": "1.8.3",
-    "unzip2": "0.2.5"
+    "unzip2": "0.2.5",
+    "polyline": "~0.2.0"
   },
   "keywords": [
     "transit",
@@ -85,7 +86,8 @@
     "timekeeper": "0.0.5"
   },
   "scripts": {
-    "download": "node scripts/download.js",
+    "import": "node scripts/import.js",
+    "server": "node scripts/server.js",
     "test": "NODE_ENV=test mocha ./test/mocha/**/*.js --reporter spec --timeout 5000"
   },
   "license": "MIT"
