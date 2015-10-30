@@ -11,6 +11,7 @@ var q;
 
 
 // check if this file was invoked direct through command line or required as an export
+var invocation = (require.main === module) ? 'direct' : 'required';
 var config = {};
 if(invocation === 'direct') {
     var data = fs.readFileSync('./config.json');
@@ -23,6 +24,9 @@ if(invocation === 'direct') {
     process.exit();
   }
 }
+
+var init_time = process.hrtime();
+init_time = init_time[0];
 
 var GTFSFiles = [{
   fileNameBase: 'agency',
@@ -133,8 +137,9 @@ function main(config, callback) {
         postProcess,
         cleanupFiles
       ], function (e, results) {
-        log(e || network_key + ': Completed');
-        cb();
+	  var last_time = process.hrtime();
+          log(e || network_key + ': Completed it takes : ' + (last_time[0] - init_time));
+          cb();
       });
 
 
@@ -240,7 +245,8 @@ function main(config, callback) {
         //Loop through each file and add network_key
         async.forEachSeries(GTFSFiles, function (GTFSFile, cb) {
           var filepath = path.join(gtfsDir, GTFSFile.fileNameBase + '.txt');
-
+	    var cpt_line = 0;
+	    var mid_time_start = process.hrtime();
           if(!fs.existsSync(filepath)) {
             log(network_key + ': Importing data - No ' + GTFSFile.fileNameBase + ' file found');
             return cb();
@@ -261,6 +267,7 @@ function main(config, callback) {
                     delete line[key];
                   }
                 }
+		  cpt_line++;
 
                 //add network_key
                 line.network_key = network_key;
@@ -360,6 +367,11 @@ function main(config, callback) {
               }
             });
             parser.on('end', function (count) {
+		var mid_time_end = process.hrtime();
+		var mid_dif = mid_time_end[0] - mid_time_start[0];
+		 mid_dif = msToTime(mid_dif * 1000);
+		console.log('--> ' +  GTFSFile.fileNameBase + ': ' + cpt_line + ' and it takes: '
+			    + mid_dif);
               cb();
             });
             parser.on('error', handleError);
@@ -370,8 +382,19 @@ function main(config, callback) {
         });
       }
 
+	function msToTime(duration) {
+	    var seconds = parseInt((duration / 1000) % 60);
+	    var minutes = parseInt((duration / (1000 * 60)) % 60);
+	    var heures = parseInt((duration / (1000 * 60 * 60)) % 24);
+	    
+	    seconds = (seconds < 10) ? "0" + seconds : seconds;
+	    minutes = (minutes < 10) ? "0" + minutes : minutes;
+	    heures = (heures < 10) ? "0" + heures : heures;
 
-      function postProcess(cb) {
+	    return (heures + ':' + minutes + ':' + seconds);
+	}
+
+	function postProcess(cb) {
         log(network_key + ': Post Processing data');
 
         async.series([
