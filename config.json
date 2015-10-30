@@ -1,6 +1,6 @@
 {
     "mongo_url": "mongodb://localhost:27017/gtfs",
     "agencies": [
-	{"territory_key" : "Languedoc-Roussillon", "network_key": "tam", "path": "montpellier_short"}
+	{"territory_key" : "Languedoc-Roussillon", "network_key": "septa", "path": "septa_gtfs.zip"}
     ]
 }

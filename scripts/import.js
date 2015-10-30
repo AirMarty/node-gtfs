@@ -8,15 +8,13 @@ var proj4 = require('proj4');
 var request = require('request');
 var unzip = require('unzip2');
 var q;
-
+var invocation = (require.main === module) ? 'direct' : 'required';
 
 // check if this file was invoked direct through command line or required as an export
 var config = {};
 if(invocation === 'direct') {
     var data = fs.readFileSync('./config.json');
     config = JSON.parse(data);
-
-
 
     if(!config.agencies) {
     handleError(new Error('No network_key specified in config.js\nTry adding \'capital-metro\' to the agencies in config.js to load transit data'));
@@ -115,8 +113,8 @@ function main(config, callback) {
 
 
     function downloadGTFS(task, cb) {
-      var downloadDir = 'downloads';
-      var gtfsDir = 'downloads';
+      var downloadDir = 'import';
+      var gtfsDir = 'import';
       var network_key = task.network_key;
       var agency_bounds = {
         sw: [],
@@ -242,7 +240,7 @@ function main(config, callback) {
           var filepath = path.join(gtfsDir, GTFSFile.fileNameBase + '.txt');
 
           if(!fs.existsSync(filepath)) {
-            log(network_key + ': Importing data - No ' + GTFSFile.fileNameBase + ' file found');
+            log(network_key + ': Importing data - No ' + GTFSFile.fileNameBase + ' file found in ' + filepath);
             return cb();
           }
 
