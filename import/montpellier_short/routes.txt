@@ -1,0 +1,41 @@
+﻿route_id,agency_id,route_short_name,route_long_name,route_type
+1,1,"1","Mosson - Odysseum",3
+2,1,"10","Aiguelongue (Jussieu) - Celleneuve",3
+3,1,"11","Les Bouisses - Gare Saint-Roch",3
+4,1,"12","Catalpas - Gare Saint-Roch",3
+5,1,"La Navette (13)","Universités des Sciences et Lettres - Saint-Éloi",3
+6,1,"14","La Pompignane (Les Lacs) - Léon Blum",3
+7,1,"La Ronde (15)","Place de France - Saint-Cléophas",3
+8,1,"16","Tournezy - Gare Saint-Roch",3
+9,1,"17","Lavandin - Sabines",3
+10,1,"18","Montpellier Sabines - Maurin - Lattes Centre",3
+11,1,"19","Pierre de Coubertin - Hôtel du Département",3
+12,1,"2","Saint-Jean de Védas Centre - Jacou",3
+13,1,"20","Saint-Jean de Védas : La Lauze - Saint-Hubéry",3
+14,1,"21","Castelnau-le-Lez Notre-Dame de Sablassou - Vendargues Paul Gauguin",3
+15,1,"22","Montpellier Saint-Éloi - Clapiers - Jacou",3
+16,1,"23","Montpellier Occitanie - Prades-le-Lez Les Baronnes",3
+17,1,"24","Grabels : La Valsière - Le Pradas",3
+18,1,"25","Montpellier Mosson - Juvignac Le Martinet",3
+19,1,"26","Montpellier Occitanie - Montferrier-sur-Lez Cirad de Baillarguet",3
+20,1,"28","Pérols : Parc Expo - Cabanes de Pérols",3
+21,1,"29","Castelnau-le-Lez Notre-Dame de Sablassou - Baillargues - Saint-Brès",3
+22,1,"3","Juvignac - Lattes Centre / Pérols Étang de l'Or",3
+23,1,"30","Le Crès : Maumarin - Via Domitia - Jean Jaurès",3
+24,1,"31","Castelnau-le-Lez Notre-Dame de Sablassou - Castries - Restinclières - Beaulieu",3
+25,1,"32","Montpellier Garcia Lorca - Villeneuve-lès-Maguelone Avenue de la Gare",3
+26,1,"33","Saint-Jean de Védas Centre - Fabrègues Lou Paillas / Saussan Pascaou",3
+27,1,"34","Montpellier Mosson - Pignan - Cournonterral - Cournonsec Les Clavoux",3
+28,1,"35","Castelnau-le-Lez : Mas de Rochet - Aube Rouge / Les Aires",3
+29,1,"36","Castelnau-le-Lez Charles de Gaulle - Clapiers - Saint-Drézéry - Montaud Église",3
+30,1,"37","Montpellier Place de l'Europe - Castelnau-le-Lez Notre-Dame de Sablassou",3
+31,1,"38","Montpellier Rondelet - Lavérune - Pignan - Cournonterral -Cournonsec Les Clavoux",3
+32,1,"39","Jacou : Jacou - La Draye",3
+33,1,"4","Place Albert 1er - Saint-Denis",3
+34,1,"41","Castelnau-le-Lez : Charles de Gaulle - Clinique du Parc",3
+35,1,"6","Euromédecine - Pas du Loup",3
+36,1,"7","Hôtel du Département - La Martelle / Les Bouisses",3
+37,1,"8","Cité de l'Arme - Gare Saint-Roch",3
+38,1,"9","Apollo - Grammont",3
+39,1,"40","Montpellier Mosson - Saint-Georges d'Orques Zone Artisanale",3
+44,1,"27","Castelnau-le-Lez Notre-Dame de Sablassou - Castries - Sussargues - Beaulieu",3

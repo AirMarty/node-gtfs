@@ -1,7 +1,7 @@
 var mongoose = require('mongoose');
 
 var Shape = mongoose.model('Shape', new mongoose.Schema({
-  agency_key: {
+  network_key: {
     type: String,
     index: true
   },
