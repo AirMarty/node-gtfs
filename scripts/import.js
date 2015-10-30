@@ -113,7 +113,7 @@ function main(config, callback) {
 
 
     function downloadGTFS(task, cb) {
-      var downloadDir = 'import';
+      var downloadDir = 'downloads';
       var gtfsDir = 'import';
       var network_key = task.network_key;
       var agency_bounds = {
