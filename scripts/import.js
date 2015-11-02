@@ -14,9 +14,9 @@ var q;
 var invocation = (require.main === module) ? 'direct' : 'required';
 var config = {};
 if(invocation === 'direct') {
-    var data = fs.readFileSync('./config.json');
-    config = JSON.parse(data);
-
+    // var data = fs.readFileSync('./config.json');
+    // config = JSON.parse(data);
+    var config = require('../config-perso.js');
 
 
     if(!config.agencies) {
@@ -30,49 +30,169 @@ init_time = init_time[0];
 
 var GTFSFiles = [{
   fileNameBase: 'agency',
-  collection: 'agencies'
+  collection: 'agencies',
+  parseur: null
 }, {
   fileNameBase: 'calendar_dates',
-  collection: 'calendardates'
+  collection: 'calendardates',
+  parseur: function(line, cb) {
+    if (line.date) {
+      line.date = parseInt(line.date, 10);
+    }
+    if (line.exception_type) {
+      line.exception_type = parseInt(line.exception_type, 10);
+    }
+    cb(null, line);
+  }
 }, {
   fileNameBase: 'calendar',
-  collection: 'calendars'
+  collection: 'calendars',
+  parseur: function(line, cb){
+    if (line.monday) {
+      line.monday = parseInt(line.monday, 10);
+    }
+    if (line.tuesday) {
+      line.tuesday = parseInt(line.tuesday, 10);
+    }
+    if (line.wednesday) {
+      line.wednesday = parseInt(line.wednesday, 10);
+    }
+    if (line.thursday) {
+      line.thursday = parseInt(line.thursday, 10);
+    }
+    if (line.friday) {
+      line.friday = parseInt(line.friday, 10);
+    }
+    if (line.saturday) {
+      line.satuday = parseInt(line.saturday, 10);
+    }
+    if (line.sunday) {
+      line.sunday = parseInt(line.sunday, 10);
+    }
+    if (line.start_date) {
+      line.start_date = parseInt(line.start_date, 10);
+    }
+    if (line.end_date) {
+      line.end_date = parseInt(line.end_date, 10);
+    }
+    cb(null, line);
+  }
 }, {
   fileNameBase: 'fare_attributes',
-  collection: 'fareattributes'
+  collection: 'fareattributes',
+  parseur: null
 }, {
   fileNameBase: 'fare_rules',
-  collection: 'farerules'
+  collection: 'farerules',
+  parseur:null
 }, {
   fileNameBase: 'feed_info',
-  collection: 'feedinfos'
+  collection: 'feedinfos',
+  parseur: null
 }, {
   fileNameBase: 'frequencies',
-  collection: 'frequencies'
+  collection: 'frequencies',
+  parseur: null
 }, {
   fileNameBase: 'routes',
-  collection: 'routes'
+  collection: 'routes',
+  parseur: null
 }, {
   fileNameBase: 'shapes',
-  collection: 'shapes'
+  collection: 'shapes',
+  parseur: function(line, cb){
+    if (line.shape_pt_sequence) {
+      line.shape_pt_sequence = parseInt(line.shape_pt_sequence, 10);
+    }
+    //make lat/long for shapes
+    if(line.shape_pt_lat && line.shape_pt_lon) {
+      line.shape_pt_lon = parseFloat(line.shape_pt_lon);
+      line.shape_pt_lat = parseFloat(line.shape_pt_lat);
+      line.loc = [line.shape_pt_lon, line.shape_pt_lat];
+    }
+    cb(null, line);
+  }
 }, {
   fileNameBase: 'stop_times',
-  collection: 'stoptimes'
+  collection: 'stoptimes',
+  parseur: function(line, cb){
+    if (line.stop_sequence) {
+      line.stop_sequence = parseInt(line.stop_sequence, 10);
+    }
+    cb(null, line);
+  }
 }, {
   fileNameBase: 'stops',
-  collection: 'stops'
+  collection: 'stops',
+  parseur: function(line, task, agency_bounds, cb){
+    if(line.stop_lat && line.stop_lon) {
+      line.loc = [
+        parseFloat(line.stop_lon),
+        parseFloat(line.stop_lat)
+      ];
+
+      // if coordinates are not specified, use [0,0]
+      if (isNaN(line.loc[0])) {
+        line.loc[0] = 0;
+      }
+      if (isNaN(line.loc[1])) {
+        line.loc[1] = 0;
+      }
+
+      // Convert to epsg4326 if needed
+      if (task.agency_proj) {
+        line.loc = proj4(task.agency_proj, 'WGS84', line.loc);
+        line.stop_lon = line.loc[0];
+        line.stop_lat = line.loc[1];
+      }
+      //???
+      // Calulate agency bounds
+      if(agency_bounds.sw[0] > line.loc[0] || !agency_bounds.sw[0]) {
+        agency_bounds.sw[0] = line.loc[0];
+      }
+      if(agency_bounds.ne[0] < line.loc[0] || !agency_bounds.ne[0]) {
+        agency_bounds.ne[0] = line.loc[0];
+      }
+      if(agency_bounds.sw[1] > line.loc[1] || !agency_bounds.sw[1]) {
+        agency_bounds.sw[1] = line.loc[1];
+      }
+      if(agency_bounds.ne[1] < line.loc[1] || !agency_bounds.ne[1]) {
+        agency_bounds.ne[1] = line.loc[1];
+      }
+    }
+    cb(null, {line: line, agency: agency_bounds});
+  }
 }, {
   fileNameBase: 'transfers',
-  collection: 'transfers'
+  collection: 'transfers',
+  parseur: null
 }, {
   fileNameBase: 'trips',
-  collection: 'trips'
+  collection: 'trips',
+  parseur: function(line, cb){
+    if (line.direction_id) {
+      line.direction_id = parseInt(line.direction_id, 10);
+    }
+    cb(null, line);
+  }
 }, {
   fileNameBase: 'timetables',
-  collection: 'timetables'
+  collection: 'timetables',
+  parseur: function(line, cb){
+    if (line.direction_id) {
+      line.direction_id = parseInt(line.direction_id, 10);
+    }
+    cb(null, line);
+  }
 }, {
   fileNameBase: 'route_directions',
-  collection: 'routedirections'
+  collection: 'routedirections',
+  parseur: function(line, cb){
+    if (line.direction_id) {
+      line.direction_id = parseInt(line.direction_id, 10);
+    }
+    cb(null, line);
+  }
 }];
 
 
@@ -101,6 +221,7 @@ function main(config, callback) {
       } else if(item.path) {
         agency.network_key = item.network_key;
         agency.path = './import/' + item.path; // import devient le dossier par default
+        agency.parser = item.parser;
       }
 
       if(!agency.network_key) {
@@ -122,6 +243,7 @@ function main(config, callback) {
       var downloadDir = 'downloads';
       var gtfsDir = 'downloads';
       var network_key = task.network_key;
+      var parse_func = task.parser;
       var agency_bounds = {
         sw: [],
         ne: []
@@ -268,98 +390,26 @@ function main(config, callback) {
                   }
                 }
 		  cpt_line++;
-
                 //add network_key
                 line.network_key = network_key;
-
-                //convert fields that should be int
-                if(line.monday) {
-                  line.monday = parseInt(line.monday, 10);
+                if (parse_func !== null) {
+                  parse_func(line, GTFSFile, function(e, res){
+                    line = res;
+                  });
                 }
-                if(line.tuesday) {
-                  line.tuesday = parseInt(line.tuesday, 10);
-                }
-                if(line.wednesday) {
-                  line.wednesday = parseInt(line.wednesday, 10);
-                }
-                if(line.thursday) {
-                  line.thursday = parseInt(line.thursday, 10);
-                }
-                if(line.friday) {
-                  line.friday = parseInt(line.friday, 10);
-                }
-                if(line.saturday) {
-                  line.satuday = parseInt(line.saturday, 10);
-                }
-                if(line.sunday) {
-                  line.sunday = parseInt(line.sunday, 10);
-                }
-                if(line.start_date) {
-                  line.start_date = parseInt(line.start_date, 10);
-                }
-                if(line.end_date) {
-                  line.end_date = parseInt(line.end_date, 10);
-                }
-                if(line.date) {
-                  line.date = parseInt(line.date, 10);
-                }
-                if(line.exception_type) {
-                  line.exception_type = parseInt(line.exception_type, 10);
-                }
-                if(line.stop_sequence) {
-                  line.stop_sequence = parseInt(line.stop_sequence, 10);
-                }
-                if(line.direction_id) {
-                  line.direction_id = parseInt(line.direction_id, 10);
-                }
-                if(line.shape_pt_sequence) {
-                  line.shape_pt_sequence = parseInt(line.shape_pt_sequence, 10);
-                }
-
-                // make lat/lon array for stops
-                if(line.stop_lat && line.stop_lon) {
-                  line.loc = [
-                    parseFloat(line.stop_lon),
-                    parseFloat(line.stop_lat)
-                  ];
-
-                  // if coordinates are not specified, use [0,0]
-                  if(isNaN(line.loc[0])) {
-                    line.loc[0] = 0;
+                if (GTFSFile.parseur !== null){
+                  if (GTFSFile.collection !== 'stops') {
+                    GTFSFile.parseur(line, function (e, res) {
+                      line = res
+                    });
                   }
-                  if(isNaN(line.loc[1])) {
-                    line.loc[1] = 0;
-                  }
-
-                  // Convert to epsg4326 if needed
-                  if(task.agency_proj) {
-                    line.loc = proj4(task.agency_proj, 'WGS84', line.loc);
-                    line.stop_lon = line.loc[0];
-                    line.stop_lat = line.loc[1];
-                  }
-
-                  // Calulate agency bounds
-                  if(agency_bounds.sw[0] > line.loc[0] || !agency_bounds.sw[0]) {
-                    agency_bounds.sw[0] = line.loc[0];
-                  }
-                  if(agency_bounds.ne[0] < line.loc[0] || !agency_bounds.ne[0]) {
-                    agency_bounds.ne[0] = line.loc[0];
-                  }
-                  if(agency_bounds.sw[1] > line.loc[1] || !agency_bounds.sw[1]) {
-                    agency_bounds.sw[1] = line.loc[1];
-                  }
-                  if(agency_bounds.ne[1] < line.loc[1] || !agency_bounds.ne[1]) {
-                    agency_bounds.ne[1] = line.loc[1];
+                  else{
+                    GTFSFile.parseur(line, task, agency_bounds, function(e, res){
+                      line = res.line;
+                      agency_bounds = res.agency;
+                    });
                   }
                 }
-
-                //make lat/long for shapes
-                if(line.shape_pt_lat && line.shape_pt_lon) {
-                  line.shape_pt_lon = parseFloat(line.shape_pt_lon);
-                  line.shape_pt_lat = parseFloat(line.shape_pt_lat);
-                  line.loc = [line.shape_pt_lon, line.shape_pt_lat];
-                }
-
                 //insert into db
                 collection.insert(line, function (e, inserted) {
                   if(e) handleError(e);
