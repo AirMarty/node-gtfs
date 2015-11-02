@@ -1,6 +1,6 @@
 {
     "mongo_url": "mongodb://localhost:27017/gtfs",
     "agencies": [
-	{"territory_key" : "Languedoc-Roussillon", "network_key": "Compagnie des Transports Strasbourgeois", "path": "CTS_GTFS"}
+	{"territory_key" : "Languedoc-Roussillon", "network_key": "Compagnie des Transports Strasbourgeois", "path": "NY-GTFS"}
     ]
 }
