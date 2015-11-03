@@ -7,6 +7,7 @@ var path = require('path');
 var proj4 = require('proj4');
 var request = require('request');
 var unzip = require('unzip2');
+var gtfs = require('../lib/shapes');
 var q;
 
 
@@ -16,7 +17,7 @@ var config = {};
 if(invocation === 'direct') {
     // var data = fs.readFileSync('./config.json');
     // config = JSON.parse(data);
-    var config = require('../config-perso.js');
+  var config = require('../config-perso.js');
 
 
     if(!config.agencies) {
@@ -257,7 +258,8 @@ function main(config, callback) {
         removeDatabase,
         importFiles,
         postProcess,
-        cleanupFiles
+        cleanupFiles,
+          createShapes
       ], function (e, results) {
 	  var last_time = process.hrtime();
           log(e || network_key + ': Completed it takes : ' + (last_time[0] - init_time));
@@ -482,6 +484,21 @@ function main(config, callback) {
               date_last_updated: Date.now()
             }
           }, cb);
+      }
+      function createShapes(cb) {
+        //if there is no shapes
+        gtfs.getShapesByNetwork(network_key, function (e, res) {
+          if (res.length === 0){
+            console.log("There is no shapes, createShapes");
+            gtfs.createShapes(network_key, function(e, res){
+              if(e) return handleError(e);
+              cb();
+            })
+          }
+          else{
+            cb();
+          }
+        });
       }
     }
   });
