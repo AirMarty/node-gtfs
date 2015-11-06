@@ -7,7 +7,8 @@ var path = require('path');
 var proj4 = require('proj4');
 var request = require('request');
 var unzip = require('unzip2');
-var gtfs = require('../lib/shapes');
+//var gtfs = require('../lib/shapes');
+var up = require('../lib/customtrips');
 var q;
 
 
@@ -17,7 +18,7 @@ var config = {};
 if(invocation === 'direct') {
     // var data = fs.readFileSync('./config.json');
     // config = JSON.parse(data);
-  var config = require('../config-perso.js');
+  var config = require('../custom-config.js');
 
 
     if(!config.agencies) {
@@ -217,10 +218,10 @@ function main(config, callback) {
         agency.network_key = item;
         agency.agency_url = 'http://www.gtfs-data-exchange.com/agency/' + item + '/latest.zip';
       } else if(item.url) {
-        agency.network_key = item.network_key;
+        agency.network_key = item.short_name + ' - ' + item.long_name;
         agency.agency_url = item.url;
       } else if(item.path) {
-        agency.network_key = item.network_key;
+        agency.network_key = item.short_name + ' - ' + item.long_name;
         agency.path = './import/' + item.path; // import devient le dossier par default
         agency.parser = item.parser;
       }
@@ -259,7 +260,8 @@ function main(config, callback) {
         importFiles,
         postProcess,
         cleanupFiles,
-          createShapes
+        upCustomTrips
+//          createShapes
       ], function (e, results) {
 	  var last_time = process.hrtime();
           log(e || network_key + ': Completed it takes : ' + (last_time[0] - init_time));
@@ -485,6 +487,22 @@ function main(config, callback) {
             }
           }, cb);
       }
+
+      function upCustomTrips(cb){
+        up.createCustomTrip(network_key, function(e, res){
+          if(e) return handleError(e);
+          cb();
+        })
+      }
+
+      //function upStopsInCustomTrips(cb){
+      //  up.upStopsInCustomTrip(network_key, function(e, res){
+      //    if(e) return handleError(e);
+      //    cb();
+      //  })
+      //}
+
+
       function createShapes(cb) {
         //if there is no shapes
         gtfs.getShapesByNetwork(network_key, function (e, res) {
