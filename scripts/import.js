@@ -7,8 +7,8 @@ var path = require('path');
 var proj4 = require('proj4');
 var request = require('request');
 var unzip = require('unzip2');
-//var gtfs = require('../lib/shapes');
 var up = require('../lib/customtrips');
+var gtfs = require('../lib/shapes');
 var q;
 
 
@@ -260,8 +260,8 @@ function main(config, callback) {
         importFiles,
         postProcess,
         cleanupFiles,
-        upCustomTrips
-//          createShapes
+        upCustomTrips,
+        createShapes
       ], function (e, results) {
 	  var last_time = process.hrtime();
           log(e || network_key + ': Completed it takes : ' + (last_time[0] - init_time));

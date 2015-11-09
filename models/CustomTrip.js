@@ -62,6 +62,14 @@ var CustomTrip = mongoose.model('CustomTrip', new mongoose.Schema({
         start_date: Number,
         end_date: Number
     },
+    date: [{
+        date: Number,
+        exception_type: {
+            type: Number,
+            min: 1,
+            max: 2
+        }
+    }],
     stoptimes: [{
         arrival_time: {
             type: String,
@@ -80,23 +88,5 @@ var CustomTrip = mongoose.model('CustomTrip', new mongoose.Schema({
             index: true
         },
         stop_headsign: String
-        //stop: {
-        //    stop_code: String,
-        //    stop_name: String,
-        //    stop_desc: String,
-        //    stop_lat: Number,
-        //    stop_lon: Number,
-        //    location_type: {
-        //        type: Number,
-        //        min: 0,
-        //        max: 1
-        //    },
-        //    parent_station: String,
-        //    wheelchair_boarding: {
-        //        type: Number,
-        //        min: 0,
-        //        max: 2
-        //    }
-        //}
     }]
 }));
