@@ -254,13 +254,13 @@ function main(config, callback) {
       log(network_key + ': Starting');
 
       async.series([
-        //cleanupFiles,
-        //getFiles,
-        //removeDatabase,
-        //importFiles,
-        //postProcess,
-        //cleanupFiles,
-        //upCustomTrips,
+        cleanupFiles,
+        getFiles,
+        removeDatabase,
+        importFiles,
+        postProcess,
+        cleanupFiles,
+        upCustomTrips,
         createShapes
       ], function (e, results) {
         log(e || network_key + ': Completed it takes : '
