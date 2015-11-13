@@ -9,6 +9,7 @@ var request = require('request');
 var unzip = require('unzip2');
 var up = require('../lib/customtrips');
 var gtfs = require('../lib/shapes');
+var readline = require('readline');
 var q;
 
 
@@ -196,7 +197,6 @@ var GTFSFiles = [{
 
 
 function main(config, callback) {
-//  init_time = init_time[0];
 
   var log = (config.verbose === false) ? function () {} : console.log;
 
@@ -206,7 +206,9 @@ function main(config, callback) {
   }, function (e, db) {
     if(e) handleError(e);
 
-    q = async.queue(downloadGTFS, 1);
+    //function checkDatabase
+
+    q = async.queue(checkDatabase, 1);
     // loop through all agencies specified
     // If the network_key is a URL, download that GTFS file, otherwise treat
     // it as an network_key and get file from gtfs-data-exchange.com
@@ -239,6 +241,33 @@ function main(config, callback) {
       callback();
     };
 
+
+    function checkDatabase(task, cb){
+      var mongoose = require('mongoose');
+      var db = mongoose.createConnection(config.mongo_url);
+      var Agency = db.model('Agency');
+      var rl = readline.createInterface(process.stdin, process.stdout);
+
+      Agency.find({
+        network_key : task.network_key
+      }).exec(function(e, res){
+        if (res){
+          console.error("The network_key " + task.network_key + "already exists.");
+          rl.question("Overwrite? [yes]/no: ", function(answer){
+            if (answer === 'no'){
+              console.log ("Not overwritting " + task.network_key);
+              cb();
+            }
+            else{
+              console.log ("Overwriting " + task.network_key);
+              downloadGTFS(task, function(){
+                cb();
+              });
+            }
+          });
+        }
+      });
+    }
 
     function downloadGTFS(task, cb) {
       var downloadDir = 'downloads';
@@ -351,7 +380,6 @@ function main(config, callback) {
           cb();
         }
       }
-
 
       function removeDatabase(cb) {
         //remove old db records based on network_key
