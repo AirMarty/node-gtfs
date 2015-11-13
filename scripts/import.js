@@ -27,9 +27,6 @@ if(invocation === 'direct') {
   }
 }
 
-var init_time = process.hrtime();
-init_time = init_time[0];
-
 var GTFSFiles = [{
   fileNameBase: 'agency',
   collection: 'agencies',
@@ -199,6 +196,8 @@ var GTFSFiles = [{
 
 
 function main(config, callback) {
+//  init_time = init_time[0];
+
   var log = (config.verbose === false) ? function () {} : console.log;
 
   // open database and create queue for agency list
@@ -250,22 +249,23 @@ function main(config, callback) {
         sw: [],
         ne: []
       };
+      var init_time = process.hrtime();
 
       log(network_key + ': Starting');
 
       async.series([
-        cleanupFiles,
-        getFiles,
-        removeDatabase,
-        importFiles,
-        postProcess,
-        cleanupFiles,
-        upCustomTrips,
+        //cleanupFiles,
+        //getFiles,
+        //removeDatabase,
+        //importFiles,
+        //postProcess,
+        //cleanupFiles,
+        //upCustomTrips,
         createShapes
       ], function (e, results) {
-	  var last_time = process.hrtime();
-          log(e || network_key + ': Completed it takes : ' + (last_time[0] - init_time));
-          cb();
+        log(e || network_key + ': Completed it takes : '
+            + msToTime(process.hrtime(init_time)[0] * 1000));
+        cb();
       });
 
 
@@ -372,12 +372,11 @@ function main(config, callback) {
         async.forEachSeries(GTFSFiles, function (GTFSFile, cb) {
           var filepath = path.join(gtfsDir, GTFSFile.fileNameBase + '.txt');
 	    var cpt_line = 0;
-	    var mid_time_start = process.hrtime();
+          var mid_time_start = process.hrtime();
           if(!fs.existsSync(filepath)) {
             log(network_key + ': Importing data - No ' + GTFSFile.fileNameBase + ' file found');
             return cb();
           }
-
           log(network_key + ': Importing data - ' + GTFSFile.fileNameBase);
           db.collection(GTFSFile.collection, function (e, collection) {
             var input = fs.createReadStream(filepath);
@@ -393,7 +392,7 @@ function main(config, callback) {
                     delete line[key];
                   }
                 }
-		  cpt_line++;
+                cpt_line++;
                 //add network_key
                 line.network_key = network_key;
                 if (parse_func !== null) {
@@ -421,11 +420,11 @@ function main(config, callback) {
               }
             });
             parser.on('end', function (count) {
-		var mid_time_end = process.hrtime();
-		var mid_dif = mid_time_end[0] - mid_time_start[0];
-		 mid_dif = msToTime(mid_dif * 1000);
-		console.log('--> ' +  GTFSFile.fileNameBase + ': ' + cpt_line + ' and it takes: '
-			    + mid_dif);
+              var mid_time_end = process.hrtime();
+              var mid_dif = mid_time_end[0] - mid_time_start[0];
+              mid_dif = msToTime(mid_dif * 1000);
+              console.log('--> ' +  GTFSFile.fileNameBase + ': ' + cpt_line + ' and it takes: '
+                  + msToTime(process.hrtime(mid_time_start)[0] * 1000));
               cb();
             });
             parser.on('error', handleError);
@@ -489,26 +488,24 @@ function main(config, callback) {
       }
 
       function upCustomTrips(cb){
+        var mid_time_start = process.hrtime();
         up.createCustomTrip(network_key, function(e, res){
+          console.log('--> CustomTrips: ' + res + ' and it takes: '
+              + msToTime(process.hrtime(mid_time_start)[0] * 1000));
           if(e) return handleError(e);
           cb();
         })
       }
 
-      //function upStopsInCustomTrips(cb){
-      //  up.upStopsInCustomTrip(network_key, function(e, res){
-      //    if(e) return handleError(e);
-      //    cb();
-      //  })
-      //}
-
-
       function createShapes(cb) {
         //if there is no shapes
+        var mid_time_start = process.hrtime();
         gtfs.getShapesByNetwork(network_key, function (e, res) {
           if (res.length === 0){
             console.log("There is no shapes, createShapes");
             gtfs.createShapes(network_key, function(e, res){
+              console.log('--> Shapes: ' + res + ' and it takes: '
+                  + msToTime(process.hrtime(mid_time_start)[0] * 1000));
               if(e) return handleError(e);
               cb();
             })
