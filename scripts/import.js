@@ -23,7 +23,8 @@ if(invocation === 'direct') {
 
 
     if(!config.agencies) {
-    handleError(new Error('No network_key specified in config.js\nTry adding \'capital-metro\' to the agencies in config.js to load transit data'));
+    handleError(new Error('No network_key specified in config.js\nTry adding \'capital-metro\' to ' +
+        'the agencies in config.js to load transit data'));
     process.exit();
   }
 }
@@ -246,7 +247,10 @@ function main(config, callback) {
       var mongoose = require('mongoose');
       var db = mongoose.createConnection(config.mongo_url);
       var Agency = db.model('Agency');
-      var rl = readline.createInterface(process.stdin, process.stdout);
+      var rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+        terminal: false});
 
       Agency.find({
         network_key : task.network_key
