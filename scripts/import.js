@@ -231,7 +231,6 @@ function main(config, callback) {
       if(!agency.network_key) {
         handleError(new Error('No URL or Agency Key or path provided.'));
       }
-
       q.push(agency);
     });
 
@@ -255,7 +254,7 @@ function main(config, callback) {
       Agency.find({
         network_key : task.network_key
       }).exec(function(e, res){
-        if (res){
+        if (res && res != ''){
           console.error("The network_key " + task.network_key + "already exists.");
           rl.question("Overwrite? [yes]/no: ", function(answer){
             if (answer === 'no'){
@@ -268,6 +267,11 @@ function main(config, callback) {
                 cb();
               });
             }
+          });
+        }
+        else {
+          downloadGTFS(task, function() {
+            cb();
           });
         }
       });
@@ -292,9 +296,7 @@ function main(config, callback) {
         removeDatabase,
         importFiles,
         postProcess,
-        cleanupFiles,
-        upCustomTrips,
-        createShapes
+        cleanupFiles
       ], function (e, results) {
         log(e || network_key + ': Completed it takes : '
             + msToTime(process.hrtime(init_time)[0] * 1000));
@@ -484,7 +486,9 @@ function main(config, callback) {
 
         async.series([
           agencyCenter,
-          updatedDate
+          updatedDate,
+          upCustomTrips,
+          createShapes
         ], function (e, results) {
           cb();
         });
