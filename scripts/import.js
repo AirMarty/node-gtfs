@@ -10,17 +10,15 @@ var unzip = require('unzip2');
 var up = require('../lib/customtrips');
 var gtfs = require('../lib/shapes');
 var readline = require('readline');
+var xml = require('xml2js');
+//var Db = require('mongodb').Db;
 var q;
-
 
 // check if this file was invoked direct through command line or required as an export
 var invocation = (require.main === module) ? 'direct' : 'required';
 var config = {};
 if(invocation === 'direct') {
-    // var data = fs.readFileSync('./config.json');
-    // config = JSON.parse(data);
   var config = require('../custom-config.js');
-
 
     if(!config.agencies) {
     handleError(new Error('No network_key specified in config.js\nTry adding \'capital-metro\' to ' +
@@ -146,7 +144,6 @@ var GTFSFiles = [{
         line.stop_lon = line.loc[0];
         line.stop_lat = line.loc[1];
       }
-      //???
       // Calulate agency bounds
       if(agency_bounds.sw[0] > line.loc[0] || !agency_bounds.sw[0]) {
         agency_bounds.sw[0] = line.loc[0];
@@ -196,9 +193,7 @@ var GTFSFiles = [{
   }
 }];
 
-
 function main(config, callback) {
-
   var log = (config.verbose === false) ? function () {} : console.log;
 
   // open database and create queue for agency list
@@ -208,7 +203,6 @@ function main(config, callback) {
     if(e) handleError(e);
 
     //function checkDatabase
-
     q = async.queue(checkDatabase, 1);
     // loop through all agencies specified
     // If the network_key is a URL, download that GTFS file, otherwise treat
@@ -221,9 +215,11 @@ function main(config, callback) {
         agency.agency_url = 'http://www.gtfs-data-exchange.com/agency/' + item + '/latest.zip';
       } else if(item.url) {
         agency.network_key = item.short_name + ' - ' + item.long_name;
+        agency.long_name = item.long_name;
         agency.agency_url = item.url;
       } else if(item.path) {
         agency.network_key = item.short_name + ' - ' + item.long_name;
+        agency.long_name = item.long_name;
         agency.path = './import/' + item.path; // import devient le dossier par default
         agency.parser = item.parser;
       }
@@ -240,7 +236,6 @@ function main(config, callback) {
       log('All agencies completed (' + config.agencies.length + ' total)');
       callback();
     };
-
 
     function checkDatabase(task, cb){
       var mongoose = require('mongoose');
@@ -289,7 +284,6 @@ function main(config, callback) {
       var init_time = process.hrtime();
 
       log(network_key + ': Starting');
-
       async.series([
         cleanupFiles,
         getFiles,
@@ -321,7 +315,6 @@ function main(config, callback) {
         });
       }
 
-
       function getFiles(cb) {
         if(task.agency_url) {
           downloadFiles(cb);
@@ -329,7 +322,6 @@ function main(config, callback) {
           readFiles(cb);
         }
       }
-
 
       function downloadFiles(cb) {
         // do download
@@ -371,7 +363,6 @@ function main(config, callback) {
         }
       }
 
-
       function readFiles(cb) {
         if(path.extname(task.path) === '.zip') {
           // local file is zipped
@@ -380,11 +371,89 @@ function main(config, callback) {
               path: downloadDir
             }).on('close', cb))
             .on('error', handleError);
-        } else {
+        } else if (path.extname(task.path) === '.xml'){
+          console.log('fichier xml');
+          parse_xml(function(e, res){
+            if (e) handleError(e);
+            else{
+              console.log(res);
+              process.exit(0);
+            }
+          });
+        }
+        else {
           // local file is unzipped, just read it from there.
           gtfsDir = task.path;
           cb();
         }
+      }
+
+      function parse_xml(cb){
+        var parser = new xml.Parser({attrkey: '@'});
+        fs.readFile(task.path,'utf8', function(err, data){
+          parser.parseString(data, function(err, result){
+            if (err) handleError(err);
+            var db2 = db.db('neptune');
+            db2.collection('neptune').insert(result, function(e, res){
+              if (e) handleError(e);
+            });
+            var db3 = db.db("CustomData");
+            var BigCollection = db3.collection('CustomLineXML');
+            var tabObj = [];
+            result = result.ChouettePTNetwork;
+            var AllStops = result.ChouetteLineDescription[0].StopPoint.map(function(stopPoint){
+              return {
+                name : stopPoint.name[0],
+                lat : stopPoint.latitude[0],
+                lon : stopPoint.longitude[0],
+                id : stopPoint.objectId[0]
+              };
+            });
+            for (var i = 0; i < result.ChouetteLineDescription[0].ChouetteRoute.length; i++){
+              var CompleteRoute = {
+                network_key : network_key,
+                line_id : result.ChouetteLineDescription[0].Line[0].objectId[0],
+                line_name : result.ChouetteLineDescription[0].Line[0].name[0],
+                route_id : result.ChouetteLineDescription[0].ChouetteRoute[i].objectId[0]
+              };
+              for (var x = 0; x < AllStops.length; x++){
+                if (AllStops[x].id === result.ChouetteLineDescription[0].JourneyPattern[i].destination[0]){
+                  CompleteRoute.direction = AllStops[x].name;
+                  x = result.ChouetteLineDescription[0].StopPoint.length;
+                }
+              }
+              var Trips = [];
+              if (result.ChouetteLineDescription[0].VehicleJourney[i].routeId[0] === CompleteRoute.route_id){
+                var stopPattern = [];
+                for (var y = 0; y < result.ChouetteLineDescription[0].JourneyPattern.length;
+                     y++){
+                  if (result.ChouetteLineDescription[0].JourneyPattern[y].objectId[0] === result.ChouetteLineDescription[0].VehicleJourney[i].journeyPatternId[0]){
+                    for (var z = 0; z < result.ChouetteLineDescription[0].JourneyPattern[i].stopPointList.length; z++){
+                      for (x = 0; x < AllStops.length; x++) {
+                        if (AllStops[x].id === result.ChouetteLineDescription[0].JourneyPattern[i].stopPointList[z]) {
+                          stopPattern.push(AllStops[x]);
+                          x = AllStops.length;
+                        }
+                      }
+                    }
+                  }
+                }
+                Trips.push({
+                  trip : result.ChouetteLineDescription[0].VehicleJourney[i].vehicleJourneyAtStop,
+                  stops_pattern : stopPattern
+                });
+              }
+              CompleteRoute.trips = Trips;
+              tabObj.push(CompleteRoute);
+            }
+//            console.log(JSON.stringify(tabObj[1]));
+            BigCollection.insert(tabObj, function(e, res) {
+              if (e) handleError(e);
+              console.log('inserted');
+              cb('ok');
+            });
+          });
+        });
       }
 
       function removeDatabase(cb) {
@@ -400,7 +469,6 @@ function main(config, callback) {
         });
       }
 
-
       function importFiles(cb) {
         //Loop through each file and add network_key
         async.forEachSeries(GTFSFiles, function (GTFSFile, cb) {
@@ -408,6 +476,7 @@ function main(config, callback) {
 	    var cpt_line = 0;
           var mid_time_start = process.hrtime();
           if(!fs.existsSync(filepath)) {
+
             log(network_key + ': Importing data - No ' + GTFSFile.fileNameBase + ' file found');
             return cb();
           }
@@ -455,8 +524,6 @@ function main(config, callback) {
             });
             parser.on('end', function (count) {
               var mid_time_end = process.hrtime();
-              var mid_dif = mid_time_end[0] - mid_time_start[0];
-              mid_dif = msToTime(mid_dif * 1000);
               console.log('--> ' +  GTFSFile.fileNameBase + ': ' + cpt_line + ' and it takes: '
                   + msToTime(process.hrtime(mid_time_start)[0] * 1000));
               cb();
@@ -494,7 +561,6 @@ function main(config, callback) {
         });
       }
 
-
       function agencyCenter(cb) {
         var lat = (agency_bounds.ne[0] - agency_bounds.sw[0]) / 2 + agency_bounds.sw[0];
         var lon = (agency_bounds.ne[1] - agency_bounds.sw[1]) / 2 + agency_bounds.sw[1];
@@ -510,7 +576,6 @@ function main(config, callback) {
             }
           }, cb);
       }
-
 
       function updatedDate(cb) {
         db.collection('agencies')
