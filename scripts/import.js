@@ -388,74 +388,6 @@ function main(config, callback) {
         }
       }
 
-      function parse_xml(cb){
-        var parser = new xml.Parser({attrkey: '@'});
-        fs.readFile(task.path,'utf8', function(err, data){
-          parser.parseString(data, function(err, result){
-            if (err) handleError(err);
-            var db2 = db.db('neptune');
-            db2.collection('neptune').insert(result, function(e, res){
-              if (e) handleError(e);
-            });
-            var db3 = db.db("CustomData");
-            var BigCollection = db3.collection('CustomLineXML');
-            var tabObj = [];
-            result = result.ChouettePTNetwork;
-            var AllStops = result.ChouetteLineDescription[0].StopPoint.map(function(stopPoint){
-              return {
-                name : stopPoint.name[0],
-                lat : stopPoint.latitude[0],
-                lon : stopPoint.longitude[0],
-                id : stopPoint.objectId[0]
-              };
-            });
-            for (var i = 0; i < result.ChouetteLineDescription[0].ChouetteRoute.length; i++){
-              var CompleteRoute = {
-                network_key : network_key,
-                line_id : result.ChouetteLineDescription[0].Line[0].objectId[0],
-                line_name : result.ChouetteLineDescription[0].Line[0].name[0],
-                route_id : result.ChouetteLineDescription[0].ChouetteRoute[i].objectId[0]
-              };
-              for (var x = 0; x < AllStops.length; x++){
-                if (AllStops[x].id === result.ChouetteLineDescription[0].JourneyPattern[i].destination[0]){
-                  CompleteRoute.direction = AllStops[x].name;
-                  x = result.ChouetteLineDescription[0].StopPoint.length;
-                }
-              }
-              var Trips = [];
-              if (result.ChouetteLineDescription[0].VehicleJourney[i].routeId[0] === CompleteRoute.route_id){
-                var stopPattern = [];
-                for (var y = 0; y < result.ChouetteLineDescription[0].JourneyPattern.length;
-                     y++){
-                  if (result.ChouetteLineDescription[0].JourneyPattern[y].objectId[0] === result.ChouetteLineDescription[0].VehicleJourney[i].journeyPatternId[0]){
-                    for (var z = 0; z < result.ChouetteLineDescription[0].JourneyPattern[i].stopPointList.length; z++){
-                      for (x = 0; x < AllStops.length; x++) {
-                        if (AllStops[x].id === result.ChouetteLineDescription[0].JourneyPattern[i].stopPointList[z]) {
-                          stopPattern.push(AllStops[x]);
-                          x = AllStops.length;
-                        }
-                      }
-                    }
-                  }
-                }
-                Trips.push({
-                  trip : result.ChouetteLineDescription[0].VehicleJourney[i].vehicleJourneyAtStop,
-                  stops_pattern : stopPattern
-                });
-              }
-              CompleteRoute.trips = Trips;
-              tabObj.push(CompleteRoute);
-            }
-//            console.log(JSON.stringify(tabObj[1]));
-            BigCollection.insert(tabObj, function(e, res) {
-              if (e) handleError(e);
-              console.log('inserted');
-              cb('ok');
-            });
-          });
-        });
-      }
-
       function removeDatabase(cb) {
         //remove old db records based on network_key
         async.forEach(GTFSFiles, function (GTFSFile, cb) {
@@ -476,7 +408,6 @@ function main(config, callback) {
 	    var cpt_line = 0;
           var mid_time_start = process.hrtime();
           if(!fs.existsSync(filepath)) {
-
             log(network_key + ': Importing data - No ' + GTFSFile.fileNameBase + ' file found');
             return cb();
           }
@@ -614,6 +545,79 @@ function main(config, callback) {
           else{
             cb();
           }
+        });
+      }
+
+      function parse_xml(cb){
+        var parser = new xml.Parser({attrkey: '@'});
+        fs.readFile(task.path,'utf8', function(err, data){
+          parser.parseString(data, function(err, result){
+            if (err) handleError(err);
+            var db2 = db.db('neptune');
+            db2.collection('neptune').insert(result, function(e, res){
+              if (e) handleError(e);
+            });
+            var db3 = db.db("CustomData");
+            var BigCollection = db3.collection('CustomLineXML');
+            var tabObj = [];
+            result = result.ChouettePTNetwork;
+            var AllStops = result.ChouetteLineDescription[0].StopPoint.map(function(stopPoint){
+              return {
+                name : stopPoint.name[0],
+                lat : stopPoint.latitude[0],
+                lon : stopPoint.longitude[0],
+                id : stopPoint.objectId[0]
+              };
+            });
+            for (var i = 0; i < result.ChouetteLineDescription[0].ChouetteRoute.length; i++){
+              for (var w = 0; w < result.ChouetteLineDescription[0].VehicleJourney.length; w++){
+                if (result.ChouetteLineDescription[0].VehicleJourney[w].routeId[0] ===
+                    result.ChouetteLineDescription[0].ChouetteRoute[i].objectId[0]) {
+                  var CompleteRoute = {
+                    network_key: network_key,
+                    line_id: result.ChouetteLineDescription[0].Line[0].objectId[0],
+                    line_name: result.ChouetteLineDescription[0].Line[0].name[0],
+                    route_id: result.ChouetteLineDescription[0].ChouetteRoute[i].objectId[0]
+                  };
+                  for (var x = 0; x < AllStops.length; x++) {
+                    if (AllStops[x].id === result.ChouetteLineDescription[0].JourneyPattern[i].destination[0]) {
+                      CompleteRoute.direction = AllStops[x].name;
+                      x = result.ChouetteLineDescription[0].StopPoint.length;
+                    }
+                  }
+                  var stopPattern = [];
+                  for (var y = 0; y < result.ChouetteLineDescription[0].JourneyPattern.length; y++){
+                    if (result.ChouetteLineDescription[0].JourneyPattern[y].objectId[0] ===
+                        result.ChouetteLineDescription[0].VehicleJourney[w].journeyPatternId[0]){
+                      for (var z = 0; z < result.ChouetteLineDescription[0].JourneyPattern[i].stopPointList.length; z++){
+                        for (x = 0; x < AllStops.length; x++) {
+                          if (AllStops[x].id === result.ChouetteLineDescription[0].JourneyPattern[i].stopPointList[z]) {
+                            result.ChouetteLineDescription[0].VehicleJourney[w].vehicleJourneyAtStop[z].stopinfo = AllStops[x];
+                            stopPattern.push(AllStops[x]);
+                            x = AllStops.length;
+                          }
+                        }
+                      }
+                    }
+                  }
+                  for (y = 0; y < result.Timetable.length; y++){
+                    for (z = 0; z < result.Timetable[y].vehicleJourneyId.length; z++){
+                      if (result.Timetable[y].vehicleJourneyId[z] === result.ChouetteLineDescription[0].VehicleJourney[w].objectId[0]){
+                        CompleteRoute.trip = result.ChouetteLineDescription[0].VehicleJourney[w].vehicleJourneyAtStop;
+                        CompleteRoute.Calendar = result.Timetable[y].calendarDay;
+                        tabObj.push(CompleteRoute);
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            BigCollection.insert(tabObj, function(e, res) {
+              if (e) handleError(e);
+              console.log('inserted');
+              cb('ok');
+            });
+          });
         });
       }
     }
